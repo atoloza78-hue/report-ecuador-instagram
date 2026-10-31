@@ -18,6 +18,7 @@ Responde al correo (o comenta en la revisión) con una orden por línea:
 |---|---|
 | `aprobado` | Publica todos los posts |
 | `aprobado 1 3` | Publica solo esos |
+| `aprobado ya 2` | Publica ese post de inmediato, sin esperar la fila |
 | `descartar 2` | No publica ese post |
 | `categoria 2: Destinos` | Cambia la categoría y regenera el post |
 | `titular 2: *WTE Miami 2026* puso la IA en el centro` | Cambia el titular; lo que va entre `*` sale en amarillo |

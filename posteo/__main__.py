@@ -67,6 +67,7 @@ AYUDA = """**Para revisar, responde a este correo** (o comenta aquí) con una or
 |---|---|
 | `aprobado` | Publica todos los posts |
 | `aprobado 1 3` | Publica solo esos |
+| `aprobado ya 2` | Publica ese post de inmediato, sin esperar la fila |
 | `descartar 2` | No publica ese post |
 | `categoria 2: Destinos` | Cambia la categoría y regenera el post |
 | `titular 2: *WTE Miami 2026* puso la IA en el centro` | Cambia el titular (lo que va entre `*` sale en amarillo) |
@@ -230,8 +231,11 @@ def cmd_revisar():
         return n in posts and posts[n] is not None
 
     resultados, cambiados, aprobar, descartar = [], [], [], []
+    inmediatos = set()
     for orden, resto in ordenes:
         if orden.startswith(("aprob", "aprueb", "publicar")):
+            if re.search(r"\b(ya|ahora|inmediato|urgente)\b", notas.sin_tildes(resto).lower()):
+                inmediatos.update(numeros(resto) or list(posts))
             ns = numeros(resto) or list(posts)
             aprobar += [n for n in ns if valido(n)]
             resultados += [f"⚠️ No existe el post {n}." for n in ns if not valido(n)]
@@ -291,8 +295,11 @@ def cmd_revisar():
         if d["estado"] == "programado":
             resultados.append(f"ℹ️ El post {n} ya estaba programado para {hora_texto(d['programado_para'])}.")
             continue
-        turno = siguiente_turno(ultimo)
-        ultimo = turno
+        if n in inmediatos:
+            turno = datetime.now(TZ)
+        else:
+            turno = siguiente_turno(ultimo)
+            ultimo = turno
         nuevos.append(n)
         d["estado"], d["programado_para"], d["n"], d["issue"] = "programado", turno.isoformat(), n, numero
         d.pop("error", None)
