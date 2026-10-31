@@ -217,7 +217,7 @@ def cmd_revisar():
 
     ordenes = leer_ordenes(evento["comment"]["body"])
     if not ordenes:
-        github.comentar(numero, "No encontré ninguna orden en tu respuesta.\n\n" + AYUDA)
+        print("El comentario no trae órdenes; no se hace nada.")
         return
 
     def valido(n):
@@ -274,6 +274,7 @@ def cmd_revisar():
         resultados.append(f"🗑️ Post {n} descartado.")
 
     ultimo = ultimo_turno()
+    nuevos = []
     for n in dict.fromkeys(aprobar):
         d = posts[n]
         if n in descartar:
@@ -286,13 +287,14 @@ def cmd_revisar():
             continue
         turno = siguiente_turno(ultimo)
         ultimo = turno
+        nuevos.append(n)
         d["estado"], d["programado_para"], d["n"], d["issue"] = "programado", turno.isoformat(), n, numero
         d.pop("error", None)
         guardar_datos(d)
 
     resultados += publicar_vencidos(sha)
     posts = {i: datos_post(pid) for i, pid in enumerate(ids, 1)}
-    for n in dict.fromkeys(aprobar):
+    for n in nuevos:
         if posts[n]["estado"] == "programado" and n not in descartar:
             resultados.append(f"🕐 Post {n} programado para {hora_texto(posts[n]['programado_para'])}.")
 
