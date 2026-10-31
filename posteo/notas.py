@@ -84,21 +84,85 @@ def elegir_categoria(categorias_wp):
 
 
 def auto_resaltar(titulo: str) -> str:
-    """Marca con *asteriscos* la parte que va en amarillo.
+    """Marca con *asteriscos* la parte que va en amarillo: el sujeto del titular.
 
-    - Si hay dos puntos al inicio del titular, se resalta hasta los dos puntos
-      ("*Efecto FOMO:* el 78%…").
-    - Si no, se resalta el nombre propio o sigla con que arranca
-      ("*MPCEI* prevé…", "*WTE Miami 2026* puso…").
+    - Dos puntos al inicio: hasta los dos puntos ("*Efecto FOMO:* el 78%…").
+    - Cita o pregunta inicial: la cita o la pregunta completa.
+    - Si no: todo lo que va antes del verbo principal
+      ("*Turismo del café en Loja* apunta…", "*Best Western* se transforma…").
+    - Si no se reconoce el verbo: la sigla o nombre propio inicial, o la frase de arranque.
     """
     if "*" in titulo:
         return titulo
-    pos = titulo.find(":")
-    if 0 < pos <= len(titulo) * 0.7:
-        return f"*{titulo[:pos + 1]}*{titulo[pos + 1:]}"
+    t = titulo.strip()
+    pos = t.find(":")
+    if 0 < pos <= len(t) * 0.7:
+        return f"*{t[:pos + 1]}*{t[pos + 1:]}"
+    for abre, cierra in (("“", "”"), ('"', '"'), ("¿", "?"), ("¡", "!")):
+        if t.startswith(abre) and cierra in t[1:]:
+            fin = t.index(cierra, 1) + 1
+            if fin < len(t):
+                return f"*{t[:fin]}*{t[fin:]}"
 
-    palabras = titulo.split(" ")
+    palabras = t.split(" ")
+    n = sujeto(palabras)
+    if n and len(" ".join(palabras[:n])) > len(t) * 0.7:
+        n = 0
+    if not n:
+        n = entidad_inicial(palabras)
+    if not n:
+        n = frase_inicial(palabras)
+    if n == 0 or n >= len(palabras):
+        return titulo
+    return "*" + " ".join(palabras[:n]) + "*" + " " + " ".join(palabras[n:])
 
+
+VERBOS = set("""es son fue fueron sera seran esta estan estara estaran hay ha han habra puso pusieron hizo
+hicieron dijo dijeron tuvo tuvieron dio dieron vio va van sigue siguen tiene tienen preve preven mira miran
+llega llegan abre abren crece crecen cae caen gana ganan suma suman une unen amplia amplian guia rie
+publica publican indica indican aplica aplican explica comunica modifica duplica triplica multiplica unifica
+certifica identifica intensifica diversifica notifica califica clasifica verifica justifica fabrica ubica
+dedica dedican replica replican aterriza aterrizan despega despegan""".split())
+CORTE = {"se"}
+NO_VERBO_FIN = ("ana", "anas", "ica", "icas", "ble", "bles", "ante", "antes", "ente", "entes", "ista",
+                "istas", "aria", "arias", "ense", "enses", "ada", "adas", "ida", "idas", "osa", "osas",
+                "iva", "ivas", "eña", "eñas", "ina", "inas", "ura")
+VERBO_FIN = ("a", "an", "e", "en", "o", "ó", "io", "aron", "ieron", "ara", "era", "ira", "aran", "eran",
+             "iran", "aba", "aban", "an")
+
+
+def _norm(w):
+    return sin_tildes(re.sub(r"[^\wÁÉÍÓÚÑÜáéíóúñü]", "", w)).lower()
+
+
+def sujeto(palabras) -> int:
+    """Cuántas palabras forman el sujeto (lo que va antes del verbo principal). 0 si no se halla."""
+    for i in range(1, len(palabras)):
+        w = palabras[i]
+        n = _norm(w)
+        if not n:
+            continue
+        if n == "que" and i >= 2:
+            return i  # "La alianza que busca…": el sujeto termina antes de la oración de relativo
+        if n in CONECTORES and n not in CORTE:
+            continue
+        if n in CORTE or n in VERBOS:
+            return i if i <= len(palabras) - 1 else 0
+        previa = _norm(palabras[i - 1])
+        limpia = re.sub(r"[^\wÁÉÍÓÚÑÜáéíóúñü]", "", w)
+        if previa in CONECTORES or not limpia or limpia[0].isupper() or any(c.isdigit() for c in limpia):
+            continue
+        sin = sin_tildes(limpia).lower()
+        termina_o_tilde = limpia.lower().endswith(("ó", "ió", "é"))
+        if termina_o_tilde or (sin.endswith(("a", "an", "e", "en")) and not sin.endswith(NO_VERBO_FIN)) \
+                or sin.endswith(("aran", "eran", "iran", "ara", "era", "ira", "aron", "ieron")):
+            if i == 1 and _norm(palabras[0]) in CONECTORES:
+                continue
+            return i
+    return 0
+
+
+def entidad_inicial(palabras) -> int:
     def es_entidad(w, primera):
         limpio = re.sub(r"[^\wÁÉÍÓÚÑáéíóúñ]", "", w)
         if not limpio:
@@ -119,15 +183,9 @@ def auto_resaltar(titulo: str) -> str:
             break
     if n == 1:
         unica = re.sub(r"[^\wÁÉÍÓÚÑáéíóúñ]", "", palabras[0])
-        # Una sola palabra con mayúscula inicial suele ser el inicio de frase
-        # ("Turismo del café…"), no un nombre: solo se resalta si es sigla o número.
         if not (unica.isupper() and len(unica) >= 2) and not any(ch.isdigit() for ch in unica):
             n = 0
-    if n == 0:
-        n = frase_inicial(palabras)
-    if n == 0 or n >= len(palabras):
-        return titulo
-    return "*" + " ".join(palabras[:n]) + "*" + " " + " ".join(palabras[n:])
+    return n
 
 
 CONECTORES = {"de", "del", "la", "el", "los", "las", "en", "y", "e", "o", "u", "a", "al", "con",
