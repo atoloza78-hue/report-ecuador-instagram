@@ -137,7 +137,9 @@ def cmd_generar(ultimas: int):
         return
 
     sha = github.guardar_cambios(f"Posts para revisión ({len(generados)})")
-    partes = [f"Se generaron **{len(generados)} posts** de las últimas notas de {config.DOMINIO_POST}.", AYUDA]
+    dueno = os.environ.get("GITHUB_REPOSITORY_OWNER", "")
+    aviso = f"@{dueno} " if dueno else ""
+    partes = [f"{aviso}Se generaron **{len(generados)} posts** de las últimas notas de {config.DOMINIO_POST}.", AYUDA]
     for i, d in enumerate(generados, 1):
         partes.append(bloque_post(i, d, sha))
     if sin_foto:
