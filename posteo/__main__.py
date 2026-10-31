@@ -83,6 +83,8 @@ def bloque_post(n: int, d: dict, sha: str) -> str:
     if d.get("categoria_asumida"):
         aviso = (f"\n\n⚠️ La nota solo tenía categorías Latam en la web; puse **{d['categoria']}**. "
                  f"Cámbiala con `categoria {n}: Nombre` si no es correcta.")
+    if d.get("ya_publicado"):
+        aviso += f"\n\n⚠️ Esta nota ya se publicó antes: {d['ya_publicado']}. Si la apruebas, saldrá de nuevo."
     return (f"### {n} · {d['categoria'].upper()}\n**{d['titulo_plano']}**\n\n"
             f'<img src="{url}" width="420" alt="Post {n}">\n\n'
             f"**Caption**\n{caption}\n\n[Ver la nota en la web]({d['enlace']}){aviso}")
@@ -127,6 +129,9 @@ def cmd_generar(ultimas: int, nota: str = ""):
             "caption": notas.armar_caption(nota["titulo"], nota["resumen"], categoria),
             "foto": nota["foto"], "estado": "pendiente",
         }
+        previo = datos_post(nota["id"])
+        if previo and previo.get("permalink"):
+            d["ya_publicado"] = previo["permalink"]
         dibujar(d)
         guardar_datos(d)
         generados.append(d)
@@ -189,19 +194,23 @@ def leer_ordenes(texto: str):
     ordenes = []
     for l in limpiar_respuesta(texto):
         if notas.sin_tildes(l).strip(" .!").lower() in ("ok", "si", "dale", "listo"):
-            ordenes.append(["aprobado", ""])
+            ordenes.append(["aprobado", "", True])
             continue
         m = RE_ORDEN.match(notas.sin_tildes(l))
         if m:
             original_resto = l[m.start("resto"):]
-            ordenes.append([m.group("orden").lower(), original_resto])
+            ordenes.append([m.group("orden").lower(), original_resto, False])
         elif ordenes and ordenes[-1][0] == "caption":
             ordenes[-1][1] += "\n" + l
-        elif ordenes and ordenes[-1][0] in ("titular", "titulo", "categoria") and l.strip() \
-                and not re.sub(r"^\s*\d+\s*[:=\-]?", "", ordenes[-1][1]).strip():
-            # "titular 2:" y el texto en la línea siguiente
+        elif ordenes and ordenes[-1][0] in ("titular", "titulo") and l.strip() and not ordenes[-1][2]:
+            # El texto sigue en la línea de abajo (el correo corta las líneas largas)
             ordenes[-1][1] += " " + l.strip()
-    return ordenes
+        elif ordenes and ordenes[-1][0] == "categoria" and l.strip() \
+                and not re.sub(r"^\s*\d+\s*[:=\-]?", "", ordenes[-1][1]).strip():
+            ordenes[-1][1] += " " + l.strip()
+        elif ordenes and not l.strip():
+            ordenes[-1][2] = True  # una línea en blanco cierra la orden
+    return [o[:2] for o in ordenes]
 
 
 def limpiar_asteriscos(texto: str) -> str:
@@ -239,6 +248,11 @@ def cmd_revisar():
         return
     ids = [int(x) for x in m.group(1).split(",") if x]
     posts = {i: datos_post(pid) for i, pid in enumerate(ids, 1)}
+    movidos = [i for i, d in posts.items() if d and d.get("issue") not in (None, numero)]
+    for i in movidos:
+        otro = posts[i]["issue"]
+        posts[i] = None
+        github.comentar(numero, f"ℹ️ El post {i} se volvió a generar en la revisión #{otro}. Responde allá para ese post.")
 
     ordenes = leer_ordenes(evento["comment"]["body"])
     if not ordenes:
