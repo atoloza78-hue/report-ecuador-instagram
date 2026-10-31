@@ -11,6 +11,10 @@ on:
         description: "Prueba: generar las N notas más recientes aunque ya se hayan revisado (0 = solo notas nuevas)"
         required: false
         default: "0"
+      nota:
+        description: "Una nota puntual: pega su enlace de ecuador.reportnews.la (o palabras del titular)"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -32,4 +36,5 @@ jobs:
       - name: Buscar notas nuevas y abrir revisión
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python -m posteo generar --ultimas "${{ github.event.inputs.ultimas || '0' }}"
+          NOTA: ${{ github.event.inputs.nota }}
+        run: python -m posteo generar --ultimas "${{ github.event.inputs.ultimas || '0' }}" --nota "$NOTA"

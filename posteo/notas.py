@@ -39,10 +39,21 @@ def extraer_lead(contenido_html: str) -> str:
     return ""
 
 
-def ultimas_notas(cantidad: int = 10):
+def nota_por_url(url: str):
+    """Busca una nota por su enlace (o por palabras del titular)."""
+    url = url.strip()
+    if url.startswith("http"):
+        slug = [p for p in url.split("?")[0].split("/") if p][-1]
+        encontradas = ultimas_notas(1, slug=slug)
+    else:
+        encontradas = ultimas_notas(1, search=url)
+    return encontradas[0] if encontradas else None
+
+
+def ultimas_notas(cantidad: int = 10, **filtros):
     r = requests.get(
         f"{config.SITIO}/wp-json/wp/v2/posts",
-        params={"per_page": cantidad, "_embed": "wp:featuredmedia,wp:term"},
+        params={"per_page": cantidad, "_embed": "wp:featuredmedia,wp:term", **filtros},
         headers={"User-Agent": "ReportEcuadorBot/1.0"}, timeout=60,
     )
     r.raise_for_status()

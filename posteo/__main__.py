@@ -89,13 +89,19 @@ def bloque_post(n: int, d: dict, sha: str) -> str:
 
 # ---------- generar ----------
 
-def cmd_generar(ultimas: int):
+def cmd_generar(ultimas: int, nota: str = ""):
     estado = leer_json(ESTADO, None)
     primera_vez = estado is None
     estado = estado or {"procesadas": []}
     recientes = notas.ultimas_notas(10)
 
-    if ultimas:
+    if nota:
+        encontrada = notas.nota_por_url(nota)
+        if not encontrada:
+            print(f"No encontré la nota: {nota}")
+            sys.exit(1)
+        seleccion = [encontrada]
+    elif ultimas:
         seleccion = recientes[:ultimas]
     else:
         seleccion = [n for n in recientes if n["id"] not in estado["procesadas"]]
@@ -399,12 +405,13 @@ def main():
     sub = p.add_subparsers(dest="cmd", required=True)
     g = sub.add_parser("generar")
     g.add_argument("--ultimas", type=int, default=0, help="Regenerar las N notas más recientes (prueba)")
+    g.add_argument("--nota", default="", help="Enlace (o palabras del titular) de una nota puntual")
     sub.add_parser("revisar")
     sub.add_parser("verificar")
     sub.add_parser("publicar")
     a = p.parse_args()
     if a.cmd == "generar":
-        cmd_generar(a.ultimas)
+        cmd_generar(a.ultimas, a.nota)
     elif a.cmd == "revisar":
         cmd_revisar()
     elif a.cmd == "publicar":

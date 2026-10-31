@@ -25,6 +25,10 @@ Responde al correo (o comenta en la revisión) con una orden por línea:
 
 El orden de publicación es el orden en que los apruebas (`aprobado 3 1` publica primero el 3). Puedes `descartar` un post programado mientras no haya salido. Cuando todos están publicados o descartados, la revisión se cierra sola.
 
+## Publicar una nota puntual
+
+Actions → *Generar posts para revisión* → *Run workflow* y en **nota** pega el enlace de la nota (o unas palabras del titular). Llega una revisión solo con ese post y se aprueba igual que las demás.
+
 ## Configuración (una sola vez)
 
 1. **Repositorio público**: Settings → General → Danger Zone → *Change visibility* → Public. Meta necesita descargar las imágenes desde una dirección pública. El token no queda expuesto: vive en los secretos.
