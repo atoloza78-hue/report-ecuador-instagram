@@ -12,7 +12,7 @@ on:
         required: false
         default: "0"
       nota:
-        description: "Una nota puntual: pega su enlace de ecuador.reportnews.la (o palabras del titular)"
+        description: "Notas puntuales: pega uno o varios enlaces de ecuador.reportnews.la separados por espacio (o palabras de un titular)"
         required: false
         default: ""
 

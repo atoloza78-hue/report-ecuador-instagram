@@ -97,11 +97,15 @@ def cmd_generar(ultimas: int, nota: str = ""):
     recientes = notas.ultimas_notas(10)
 
     if nota:
-        encontrada = notas.nota_por_url(nota)
-        if not encontrada:
-            print(f"No encontré la nota: {nota}")
-            sys.exit(1)
-        seleccion = [encontrada]
+        # Varios enlaces separados por espacio o coma generan una sola revisión.
+        enlaces = re.findall(r"https?://\S+?(?=[\s,]|$)", nota) or [nota]
+        seleccion = []
+        for e in enlaces:
+            encontrada = notas.nota_por_url(e)
+            if not encontrada:
+                print(f"No encontré la nota: {e}")
+                sys.exit(1)
+            seleccion.append(encontrada)
     elif ultimas:
         seleccion = recientes[:ultimas]
     else:

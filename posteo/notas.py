@@ -124,8 +124,31 @@ def auto_resaltar(titulo: str) -> str:
         if not (unica.isupper() and len(unica) >= 2) and not any(ch.isdigit() for ch in unica):
             n = 0
     if n == 0:
+        n = frase_inicial(palabras)
+    if n == 0 or n >= len(palabras):
         return titulo
-    return "*" + " ".join(palabras[:n]) + "*" + ("" if n == len(palabras) else " " + " ".join(palabras[n:]))
+    return "*" + " ".join(palabras[:n]) + "*" + " " + " ".join(palabras[n:])
+
+
+CONECTORES = {"de", "del", "la", "el", "los", "las", "en", "y", "e", "o", "u", "a", "al", "con",
+              "por", "para", "que", "se", "su", "sus", "un", "una", "lo", "como", "sin", "sobre", "entre"}
+
+
+def frase_inicial(palabras) -> int:
+    """Todo post lleva una parte en amarillo. Si no hay nombre propio ni dos puntos,
+    se resalta la frase con que arranca el titular (cerca del 40% del largo),
+    sin terminar en una palabra de enlace ("*Turismo del café en Loja* apunta…")."""
+    total = len(" ".join(palabras))
+    limite = max(14, total * 0.4)
+    n, largo = 0, 0
+    for i, w in enumerate(palabras):
+        nuevo = largo + (1 if i else 0) + len(w)
+        if i >= 1 and nuevo > limite:
+            break
+        largo, n = nuevo, i + 1
+    while n > 1 and sin_tildes(re.sub(r"[^\w]", "", palabras[n - 1])).lower() in CONECTORES:
+        n -= 1
+    return n
 
 
 def recortar_resumen(texto: str, maximo: int = 320) -> str:
