@@ -1,0 +1,35 @@
+name: Generar posts para revisión
+
+on:
+  schedule:
+    # Cada hora de 7:13 a. m. a 8:13 p. m. hora de Ecuador (UTC-5).
+    - cron: "13 12-23 * * *"
+    - cron: "13 0,1 * * *"
+  workflow_dispatch:
+    inputs:
+      ultimas:
+        description: "Prueba: generar las N notas más recientes aunque ya se hayan revisado (0 = solo notas nuevas)"
+        required: false
+        default: "0"
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: posteo
+  cancel-in-progress: false
+
+jobs:
+  generar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Buscar notas nuevas y abrir revisión
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python -m posteo generar --ultimas "${{ github.event.inputs.ultimas || '0' }}"
