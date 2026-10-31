@@ -30,6 +30,15 @@ def limpiar_html(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
+def extraer_lead(contenido_html: str) -> str:
+    """El lead es el primer párrafo de la nota en la web (la bajada en negrita)."""
+    for parrafo in re.findall(r"<p\b[^>]*>(.*?)</p>", contenido_html or "", re.S | re.I):
+        texto = limpiar_html(parrafo)
+        if texto:
+            return texto
+    return ""
+
+
 def ultimas_notas(cantidad: int = 10):
     r = requests.get(
         f"{config.SITIO}/wp-json/wp/v2/posts",
@@ -48,7 +57,7 @@ def ultimas_notas(cantidad: int = 10):
             "fecha": p["date"],
             "enlace": p["link"],
             "titulo": limpiar_html(p["title"]["rendered"]),
-            "resumen": limpiar_html(p["excerpt"]["rendered"]),
+            "resumen": extraer_lead(p["content"]["rendered"]) or limpiar_html(p["excerpt"]["rendered"]),
             "categorias_wp": [html.unescape(c) for c in categorias],
             "foto": media.get("source_url"),
         })
@@ -129,7 +138,8 @@ def armar_caption(titulo_plano: str, resumen: str, categoria: str) -> str:
     tags = [config.HASHTAGS_FIJOS[0], config.HASHTAGS_FIJOS[1], hashtag(categoria)] + config.HASHTAGS_FIJOS[2:]
     partes = [titulo_plano]
     if resumen:
-        partes.append(recortar_resumen(resumen))
-    partes.append(f"Lee la nota completa en {config.DOMINIO_POST} (link en la bio)")
+        # El lead va completo; solo se recorta si superara el límite de Instagram (2.200 caracteres).
+        partes.append(recortar_resumen(resumen, 1900))
+    partes.append(f"Lee la nota completa en {config.DOMINIO_POST}")
     partes.append(" ".join(dict.fromkeys(tags)))
     return "\n\n".join(partes)

@@ -37,4 +37,4 @@ Cuando todos los posts están publicados o descartados, la revisión se cierra s
 - `assets/` — fondo del bloque rojo con el mapamundi y logo de Report Ecuador.
 - `posts/<id>/` — cada post generado (`post.jpg`) y sus datos (`datos.json`).
 - `estado.json` — notas ya revisadas, para no repetirlas.
-- `posteo/config.py` — dominio, categorías, hashtags y cuenta de Instagram.
+- `posteo/config.py` — dominio, categorías, hashtags y cuenta de Instagram. El caption lleva el titular, el lead completo de la nota (primer párrafo) y hashtags.
