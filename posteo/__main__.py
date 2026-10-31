@@ -197,7 +197,21 @@ def leer_ordenes(texto: str):
             ordenes.append([m.group("orden").lower(), original_resto])
         elif ordenes and ordenes[-1][0] == "caption":
             ordenes[-1][1] += "\n" + l
+        elif ordenes and ordenes[-1][0] in ("titular", "titulo", "categoria") and l.strip() \
+                and not re.sub(r"^\s*\d+\s*[:=\-]?", "", ordenes[-1][1]).strip():
+            # "titular 2:" y el texto en la línea siguiente
+            ordenes[-1][1] += " " + l.strip()
     return ordenes
+
+
+def limpiar_asteriscos(texto: str) -> str:
+    """Los correos convierten negritas en *…*: deja solo las marcas del resaltado."""
+    t = re.sub(r"\*{2,}", "*", texto.strip())
+    if t.count("*") % 2 == 1 and t.endswith("*"):
+        t = t[:-1].rstrip()
+    if t.count("*") % 2 == 1 and t.startswith("*"):
+        t = t[1:].lstrip()
+    return t
 
 
 def numeros(texto: str):
@@ -265,7 +279,7 @@ def cmd_revisar():
                 d["categoria"], d["categoria_asumida"] = cat, False
                 d["caption"] = notas.armar_caption(d["titulo_plano"], d["resumen"], cat)
             elif orden in ("titular", "titulo"):
-                d["titulo"] = valor.replace("\n", " ")
+                d["titulo"] = limpiar_asteriscos(valor.replace("\n", " "))
                 d["titulo_plano"] = d["titulo"].replace("*", "")
                 d["caption"] = notas.armar_caption(d["titulo_plano"], d["resumen"], d["categoria"])
             elif orden == "caption":
