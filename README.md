@@ -8,6 +8,7 @@ Convierte las notas nuevas de [ecuador.reportnews.la](https://ecuador.reportnews
 2. Por cada nota nueva genera el post: foto destacada, categoría, titular (la parte inicial va en amarillo) y `ecuador.reportnews.la`. Las categorías **Latam** (Grupo 6, Destacada, Abajo) se ignoran.
 3. Abre **una revisión** con todos los posts nuevos. GitHub la envía por correo.
 4. **Respondes el correo** con lo que quieres hacer y el sistema lo aplica.
+5. Los posts aprobados se publican **con una hora de diferencia**: el primero de inmediato y los demás en cola, siempre entre 7 a. m. y 9 p. m. (hora de Ecuador). Lo que no alcance ese día sale al día siguiente desde las 7 a. m.
 
 ## Órdenes para la revisión
 
@@ -22,7 +23,7 @@ Responde al correo (o comenta en la revisión) con una orden por línea:
 | `titular 2: *WTE Miami 2026* puso la IA en el centro` | Cambia el titular; lo que va entre `*` sale en amarillo |
 | `caption 2: texto nuevo` | Reemplaza el caption |
 
-Cuando todos los posts están publicados o descartados, la revisión se cierra sola.
+El orden de publicación es el orden en que los apruebas (`aprobado 3 1` publica primero el 3). Puedes `descartar` un post programado mientras no haya salido. Cuando todos están publicados o descartados, la revisión se cierra sola.
 
 ## Configuración (una sola vez)
 
@@ -37,4 +38,4 @@ Cuando todos los posts están publicados o descartados, la revisión se cierra s
 - `assets/` — fondo del bloque rojo con el mapamundi y logo de Report Ecuador.
 - `posts/<id>/` — cada post generado (`post.jpg`) y sus datos (`datos.json`).
 - `estado.json` — notas ya revisadas, para no repetirlas.
-- `posteo/config.py` — dominio, categorías, hashtags y cuenta de Instagram. El caption lleva el titular, el lead completo de la nota (primer párrafo) y hashtags.
+- `posteo/config.py` — dominio, categorías, hashtags, cuenta de Instagram, minutos entre posts y horario de publicación. El caption lleva el titular, el lead completo de la nota (primer párrafo) y hashtags.

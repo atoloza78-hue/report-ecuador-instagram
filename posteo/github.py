@@ -39,6 +39,10 @@ def guardar_cambios(mensaje: str) -> str:
     return _git("rev-parse", "HEAD")
 
 
+def sha_actual() -> str:
+    return _git("rev-parse", "HEAD")
+
+
 def url_publica(sha: str, ruta: str) -> str:
     """URL pública y fija (no cambia aunque el archivo se edite después)."""
     return f"https://raw.githubusercontent.com/{repo()}/{sha}/{ruta}"

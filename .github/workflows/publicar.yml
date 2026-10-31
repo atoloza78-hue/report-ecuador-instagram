@@ -1,0 +1,30 @@
+name: Publicar posts programados
+
+on:
+  schedule:
+    # Cada 15 minutos revisa si a algún post aprobado ya le tocó su hora.
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: posteo
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Publicar lo que ya toca
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+        run: python -m posteo publicar

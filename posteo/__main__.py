@@ -3,6 +3,7 @@
 Uso:
   python -m posteo generar [--ultimas N]   Busca notas nuevas, genera los posts y abre la revisión.
   python -m posteo revisar                 Procesa una respuesta a la revisión (aprobar, descartar, cambios).
+  python -m posteo publicar                Publica los posts programados cuya hora ya llegó.
   python -m posteo verificar               Comprueba que el token de Instagram funciona.
 """
 import argparse
@@ -10,7 +11,7 @@ import json
 import os
 import re
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -21,6 +22,7 @@ ESTADO = RAIZ / "estado.json"
 POSTS = RAIZ / "posts"
 MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 EN_GITHUB = bool(os.environ.get("GITHUB_ACTIONS"))
+TZ = ZoneInfo("America/Guayaquil")
 
 
 # ---------- datos ----------
@@ -53,7 +55,7 @@ def dibujar(d: dict):
 
 
 def ahora_texto() -> str:
-    t = datetime.now(ZoneInfo("America/Guayaquil"))
+    t = datetime.now(TZ)
     return f"{t.day} {MESES[t.month - 1]} {t.year}, {t:%H:%M}"
 
 
@@ -70,7 +72,7 @@ AYUDA = """**Para revisar, responde a este correo** (o comenta aquí) con una or
 | `titular 2: *WTE Miami 2026* puso la IA en el centro` | Cambia el titular (lo que va entre `*` sale en amarillo) |
 | `caption 2: texto nuevo` | Reemplaza el caption |
 
-Puedes combinar cambios y aprobación en la misma respuesta."""
+Puedes combinar cambios y aprobación en la misma respuesta. Los posts aprobados se publican **con una hora de diferencia**, el primero de inmediato."""
 
 
 def bloque_post(n: int, d: dict, sha: str) -> str:
@@ -269,28 +271,111 @@ def cmd_revisar():
         guardar_datos(posts[n])
         resultados.append(f"🗑️ Post {n} descartado.")
 
+    ultimo = ultimo_turno()
     for n in dict.fromkeys(aprobar):
         d = posts[n]
+        if n in descartar:
+            continue
         if d["estado"] == "publicado":
             resultados.append(f"ℹ️ El post {n} ya estaba publicado: {d.get('permalink', '')}")
             continue
-        if n in descartar:
+        if d["estado"] == "programado":
+            resultados.append(f"ℹ️ El post {n} ya estaba programado para {hora_texto(d['programado_para'])}.")
             continue
-        try:
-            enlace = instagram.publicar_imagen(github.url_publica(sha, ruta_post(d["id"])), d["caption"])
-            d["estado"], d["permalink"] = "publicado", enlace
-            resultados.append(f"✅ Post {n} publicado en Instagram. {enlace}")
-        except instagram.ErrorInstagram as e:
-            d["estado"] = "error"
-            d["error"] = str(e)
-            resultados.append(f"❌ El post {n} no se pudo publicar: {e}")
+        turno = siguiente_turno(ultimo)
+        ultimo = turno
+        d["estado"], d["programado_para"], d["n"], d["issue"] = "programado", turno.isoformat(), n, numero
+        d.pop("error", None)
         guardar_datos(d)
+
+    resultados += publicar_vencidos(sha)
+    posts = {i: datos_post(pid) for i, pid in enumerate(ids, 1)}
+    for n in dict.fromkeys(aprobar):
+        if posts[n]["estado"] == "programado" and n not in descartar:
+            resultados.append(f"🕐 Post {n} programado para {hora_texto(posts[n]['programado_para'])}.")
 
     github.guardar_cambios(f"Revisión #{numero}: resultado")
     if resultados:
         github.comentar(numero, "\n".join(resultados))
-    if all(d is None or d["estado"] in ("publicado", "descartado") for d in posts.values()):
+    cerrar_si_termino(numero)
+
+
+# ---------- publicación espaciada ----------
+
+def todos_los_posts():
+    return [leer_json(f, None) for f in sorted(POSTS.glob("*/datos.json"))]
+
+
+def ultimo_turno():
+    """Hora de la última publicación hecha o programada (para mantener el espacio entre posts)."""
+    horas = []
+    for d in todos_los_posts():
+        if d and d.get("estado") in ("publicado", "programado"):
+            for k in ("programado_para", "publicado_en"):
+                if d.get(k):
+                    horas.append(datetime.fromisoformat(d[k]))
+    return max(horas) if horas else None
+
+
+def siguiente_turno(ultimo):
+    ahora = datetime.now(TZ)
+    t = ahora if ultimo is None else max(ahora, ultimo + timedelta(minutes=config.MINUTOS_ENTRE_POSTS))
+    inicio, fin = config.HORARIO_PUBLICACION
+    if t.hour < inicio:
+        t = t.replace(hour=inicio, minute=0, second=0, microsecond=0)
+    elif t.hour >= fin:
+        t = (t + timedelta(days=1)).replace(hour=inicio, minute=0, second=0, microsecond=0)
+    return t
+
+
+def hora_texto(iso: str) -> str:
+    t = datetime.fromisoformat(iso).astimezone(TZ)
+    hoy = datetime.now(TZ).date()
+    dia = "hoy" if t.date() == hoy else ("mañana" if t.date() == hoy + timedelta(days=1) else f"el {t.day} {MESES[t.month - 1]}")
+    return f"{dia} a las {t:%H:%M} (hora de Ecuador)"
+
+
+def publicar_vencidos(sha: str):
+    """Publica los posts programados cuya hora ya llegó. Devuelve líneas de resultado."""
+    ahora = datetime.now(TZ) + timedelta(minutes=2)
+    resultados = []
+    vencidos = [d for d in todos_los_posts()
+                if d and d.get("estado") == "programado" and datetime.fromisoformat(d["programado_para"]) <= ahora]
+    for d in sorted(vencidos, key=lambda x: x["programado_para"]):
+        n = d.get("n", "")
+        try:
+            enlace = instagram.publicar_imagen(github.url_publica(sha, ruta_post(d["id"])), d["caption"])
+            d["estado"], d["permalink"] = "publicado", enlace
+            d["publicado_en"] = datetime.now(TZ).isoformat()
+            linea = f"✅ Post {n} publicado en Instagram. {enlace}"
+        except instagram.ErrorInstagram as e:
+            d["estado"], d["error"] = "error", str(e)
+            linea = f"❌ El post {n} no se pudo publicar: {e}. Responde `aprobado {n}` para reintentar."
+        guardar_datos(d)
+        resultados.append(linea)
+        d["_linea"] = linea
+    publicar_vencidos.ultimos = vencidos
+    return resultados
+
+
+def cerrar_si_termino(numero: int):
+    del_lote = [d for d in todos_los_posts() if d and d.get("issue") == numero]
+    if del_lote and all(d["estado"] in ("publicado", "descartado") for d in del_lote):
         github.cerrar_issue(numero)
+
+
+def cmd_publicar():
+    """Lo corre GitHub cada 15 minutos: publica lo programado que ya tocó."""
+    sha = github.sha_actual()
+    publicar_vencidos(sha)
+    vencidos = getattr(publicar_vencidos, "ultimos", [])
+    if not vencidos:
+        print("Nada por publicar ahora.")
+        return
+    github.guardar_cambios("Publicación programada")
+    for numero in dict.fromkeys(d.get("issue") for d in vencidos if d.get("issue")):
+        github.comentar(numero, "\n".join(d["_linea"] for d in vencidos if d.get("issue") == numero))
+        cerrar_si_termino(numero)
 
 
 # ---------- verificar ----------
@@ -312,11 +397,14 @@ def main():
     g.add_argument("--ultimas", type=int, default=0, help="Regenerar las N notas más recientes (prueba)")
     sub.add_parser("revisar")
     sub.add_parser("verificar")
+    sub.add_parser("publicar")
     a = p.parse_args()
     if a.cmd == "generar":
         cmd_generar(a.ultimas)
     elif a.cmd == "revisar":
         cmd_revisar()
+    elif a.cmd == "publicar":
+        cmd_publicar()
     else:
         cmd_verificar()
 

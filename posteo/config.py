@@ -25,3 +25,8 @@ HASHTAGS_FIJOS = ["#ReportEcuador", "#TurismoEcuador", "#Turismo", "#IndustriaTu
 # En la primera ejecución (sin historial) solo se toman estas notas recientes,
 # para no inundar la revisión con notas viejas.
 MAX_PRIMERA_VEZ = 3
+
+# Espacio entre publicaciones aprobadas (minutos) y horario en que se publica
+# (hora de Ecuador). Lo que caiga fuera del horario pasa al día siguiente a la hora de inicio.
+MINUTOS_ENTRE_POSTS = 60
+HORARIO_PUBLICACION = (7, 21)
