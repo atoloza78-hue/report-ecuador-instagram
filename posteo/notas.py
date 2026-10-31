@@ -136,7 +136,8 @@ def hashtag(texto: str) -> str:
 
 def armar_caption(titulo_plano: str, resumen: str, categoria: str) -> str:
     tags = [config.HASHTAGS_FIJOS[0], config.HASHTAGS_FIJOS[1], hashtag(categoria)] + config.HASHTAGS_FIJOS[2:]
-    partes = [titulo_plano]
+    # El titular ya va en la imagen: el caption arranca con el lead.
+    partes = [] if resumen else [titulo_plano]
     if resumen:
         # El lead va completo; solo se recorta si superara el límite de Instagram (2.200 caracteres).
         partes.append(recortar_resumen(resumen, 1900))

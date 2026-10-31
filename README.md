@@ -29,7 +29,7 @@ El orden de publicación es el orden en que los apruebas (`aprobado 3 1` publica
 
 1. **Repositorio público**: Settings → General → Danger Zone → *Change visibility* → Public. Meta necesita descargar las imágenes desde una dirección pública. El token no queda expuesto: vive en los secretos.
 2. **Token de Instagram**: Settings → Secrets and variables → Actions → *New repository secret*. Nombre `IG_TOKEN`, valor el token generado en Meta.
-3. **Correo de las revisiones**: en tu perfil de GitHub, Settings → Emails, agrega `alejo@reportcolombia.com`; luego en Settings → Notifications → *Custom routing* asigna ese correo a este repositorio.
+3. **Correo de las revisiones**: en tu perfil de GitHub, Settings → Emails, agrega `alejo@reportcolombia.com`; luego en Settings → Notifications elige ese correo en *Default notifications email*.
 4. **Probar**: Actions → *Verificar conexión con Instagram* → *Run workflow*. Luego Actions → *Generar posts para revisión* → *Run workflow* con `ultimas = 3`.
 
 ## Archivos
@@ -38,4 +38,4 @@ El orden de publicación es el orden en que los apruebas (`aprobado 3 1` publica
 - `assets/` — fondo del bloque rojo con el mapamundi y logo de Report Ecuador.
 - `posts/<id>/` — cada post generado (`post.jpg`) y sus datos (`datos.json`).
 - `estado.json` — notas ya revisadas, para no repetirlas.
-- `posteo/config.py` — dominio, categorías, hashtags, cuenta de Instagram, minutos entre posts y horario de publicación. El caption lleva el titular, el lead completo de la nota (primer párrafo) y hashtags.
+- `posteo/config.py` — dominio, categorías, hashtags, cuenta de Instagram, minutos entre posts y horario de publicación. El caption lleva el lead completo de la nota (primer párrafo), el enlace a la web y hashtags; el titular no se repite porque ya va en la imagen.
