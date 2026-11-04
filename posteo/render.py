@@ -83,6 +83,11 @@ def maquetar(palabras, tam):
     sp = f.getlength(" ") + esp * 2
     lineas, actual, w_linea, demasiado_ancha = [[]], 0, 0.0, False
     for texto, res in palabras:
+        if texto == "|":  # salto de línea manual
+            if lineas[-1]:
+                lineas.append([])
+                w_linea = 0.0
+            continue
         ww = ancho(texto, f, esp)
         if ww > ANCHO_TITULAR:
             demasiado_ancha = True
@@ -92,6 +97,38 @@ def maquetar(palabras, tam):
         w_linea += (sp if lineas[-1] else 0) + ww
         lineas[-1].append((texto, res, ww))
     return lineas, sp, esp, demasiado_ancha
+
+
+def amarillo_partido(lineas) -> bool:
+    """True si la primera parte en amarillo queda repartida en dos renglones."""
+    filas = [i for i, linea in enumerate(lineas) for _, res, _ in linea if res]
+    if not filas:
+        return False
+    primera = filas[0]
+    # la primera tira amarilla continua
+    tira, dentro = [], False
+    for i, linea in enumerate(lineas):
+        for _, res, _ in linea:
+            if res:
+                tira.append(i)
+                dentro = True
+            elif dentro:
+                return len(set(tira)) > 1
+    return len(set(tira)) > 1
+
+
+def elegir_tamano(palabras):
+    """Tamaño de letra: máximo 3 renglones y, si se puede,
+    que la parte amarilla inicial quede completa en un solo renglón (sin bajar de 70 px)."""
+    for tam in range(76, 69, -2):
+        lineas, _, _, ancha = maquetar(palabras, tam)
+        if len(lineas) <= 3 and not ancha and not amarillo_partido(lineas):
+            return tam, lineas
+    for tam in range(76, 55, -2):
+        lineas, _, _, ancha = maquetar(palabras, tam)
+        if len(lineas) <= 3 and not ancha:
+            return tam, lineas
+    return 56, maquetar(palabras, 56)[0]
 
 
 def recortar_foto(foto: Image.Image, enfoque_x=0.5, enfoque_y=0.5) -> Image.Image:
@@ -126,15 +163,8 @@ def generar_post(foto: Image.Image, categoria: str, titulo: str,
     ancho_cat = ancho(cat, fuente(58), 1.1)
 
     palabras = partir_resaltado(titulo)
-    tam = 76
-    while tam >= 56:
-        lineas, sp, esp, ancha = maquetar(palabras, tam)
-        if len(lineas) <= 3 and not ancha:
-            break
-        tam -= 2
-    else:
-        tam = 56
-        lineas, sp, esp, ancha = maquetar(palabras, tam)
+    tam, lineas = elegir_tamano(palabras)
+    _, sp, esp, _ = maquetar(palabras, tam)
     interlineado = round(tam * 81 / 76)
     y = 1238 - (76 - tam) * 0.6
     for linea in lineas:
